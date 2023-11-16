@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
 from datetime import date
+import json
 
 app = Flask(__name__)
 
@@ -15,17 +16,16 @@ class Card(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title =db.Column(db.String(100))
     description = db.Column(db.Text())
+    status = db.Column(db.String(100))
     date_created = db.Column(db.Date())
-    status = db.Column(db.String())
-    priority = db.Column(db.String())
 
 class CardSchema(ma.Schema):
     class Meta:
-        fields = ('id', 'title', 'description','date, status', 'priority')
+        fields = ('id', 'title', 'description','date, status')
 
-card_schema = CardSchema()
+# card_schema = CardSchema()
 
-cards_schema = CardSchema(many = True)
+# cards_schema = CardSchema(many = True)
 
 @app.cli.command('db_create')
 def db_create():
@@ -36,34 +36,51 @@ def db_create():
 
 @app.cli.command('db_seed')
 def db_seed():
-    card1 = Card(
+    
+    cards = [
+
+    Card(
         title = 'Start the project',
         description = 'Stage 1 - Creation ERD',
+        status = 'done',
         date_created = date.today()
-    )
-    db.session.add(card1)
+    ),
+
+    Card(
+        title = "ORM Queries",
+        description = "Stage 2, Implement CRUD",
+        status = 'In progress',
+        date_created = date.today()
+    ),
+
+    Card(
+        title = "SQLAlchemy and Marshmallow",
+        description = "Stage 3, integrate modules",
+        status ='In progress',
+        date_created = date.today()
+    ),
+
+    ]
+    
+    db.session.add_all(cards)
 
 
-    card2 = Card(
-    title = "SQLAlchemy and Marshmallow",
-    description = "Stage 2, integrate modules",
-    status = "Ongoing",
-    priority = "High",
-    date_created = date.today()
-    )
-
-    db.session.add(card2)
 
     db.session.commit()
     print('Database seeded')
 
+
+
+@app.route('/cards')
+def all_cards():
+    # select * from cards;
+    stmt = db.select(Card).where(db.or_(Card.status != 'done', Card.id > 2)).order_by(Card.title)
+    print (stmt)
+    cards = db.session.scalars(stmt).all()
+    return CardSchema(many = True).dump(cards)
+
+
+
 @app.route('/')
 def index():
     return 'MAIN PAGE'
-
-@app.route("/cards", methods=["GET"])
-def get_cards():
-    stmt = db.select(Card)
-    cards = db.session.scalars(stmt)
-    result = cards_schema.dump(cards)
-    return jsonify(result)
