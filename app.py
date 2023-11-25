@@ -1,86 +1,46 @@
-from flask import Flask, jsonify
-from flask_marshmallow import Marshmallow
-from flask_sqlalchemy import SQLAlchemy
-from datetime import date
-import json
-
-app = Flask(__name__)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql+psycopg2://trello_dev:password123@127.0.0.1:5432/trello'
-
-ma = Marshmallow(app)
-db = SQLAlchemy(app)
-
-class Card(db.Model):
-    __tablename__ = 'cards'
-    id = db.Column(db.Integer, primary_key=True)
-    title =db.Column(db.String(100))
-    description = db.Column(db.Text())
-    status = db.Column(db.String(100))
-    date_created = db.Column(db.Date())
-
-class CardSchema(ma.Schema):
-    class Meta:
-        fields = ('id', 'title', 'description','date, status')
-
-# card_schema = CardSchema()
-
-# cards_schema = CardSchema(many = True)
-
-@app.cli.command('db_create')
-def db_create():
-    db.drop_all()
-    print("Tables dropped")
-    db.create_all()
-    print ('Created Tables')
-
-@app.cli.command('db_seed')
-def db_seed():
-    
-    cards = [
-
-    Card(
-        title = 'Start the project',
-        description = 'Stage 1 - Creation ERD',
-        status = 'done',
-        date_created = date.today()
-    ),
-
-    Card(
-        title = "ORM Queries",
-        description = "Stage 2, Implement CRUD",
-        status = 'In progress',
-        date_created = date.today()
-    ),
-
-    Card(
-        title = "SQLAlchemy and Marshmallow",
-        description = "Stage 3, integrate modules",
-        status ='In progress',
-        date_created = date.today()
-    ),
-
-    ]
-    
-    db.session.add_all(cards)
+from flask import abort
+from flask_jwt_extended import jwt_required, get_jwt_identity
+from setup import *
+from models.user import User
+from models.card import Card, CardSchema
+from blueprints.cli_bp import db_commands
+from blueprints.users_bp import users_bp
 
 
 
-    db.session.commit()
-    print('Database seeded')
+
+def admin_required():
+    user_email = get_jwt_identity()
+    stmt =db.select(User).where(User.email == user_email)
+    user = db.session.scalar(stmt)
+    if not user.is_admin:
+        abort(401)
+
+@app.errorhandler(401)
+def unauthorized (err):
+    return {'error': 'You are not authorized to access this feature'}
 
 
 
-@app.route('/cards')
+app.register_blueprint(db_commands)
+app.register_blueprint(users_bp)
+
+
+
+
+@app.route("/cards")
+@jwt_required()
 def all_cards():
+    admin_required()
+
     # select * from cards;
-    stmt = db.select(Card).where(db.or_(Card.status != 'done', Card.id > 2)).order_by(Card.title)
-    print (stmt)
+    stmt = db.select(
+        Card
+    )  # .where(db.or_(Card.status != 'Done', Card.id > 2)).order_by(Card.title.desc())
     cards = db.session.scalars(stmt).all()
-    return CardSchema(many = True).dump(cards)
+    return CardSchema(many=True).dump(cards)
 
 
-
-@app.route('/')
+@app.route("/")
 def index():
-    return 'MAIN PAGE'
+    return "Hello world!"
