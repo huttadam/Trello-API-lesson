@@ -7,14 +7,14 @@ from datetime import date
 
 db_commands = Blueprint('db', __name__)
 
-@db_commands.cli.command("db_create")
+@db_commands.cli.command("create")
 def db_create():
     db.drop_all()
     db.create_all()
     print("Created tables")
 
 
-@db_commands.cli.command("db_seed")
+@db_commands.cli.command("seed")
 def db_seed():
     users = [
         User(
