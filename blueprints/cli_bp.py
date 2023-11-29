@@ -16,6 +16,7 @@ def db_create():
 
 @db_commands.cli.command("seed")
 def db_seed():
+    # Users
     users = [
         User(
             email="admin@spam.com",
@@ -29,28 +30,34 @@ def db_seed():
         ),
     ]
 
+    db.session.add_all(users)
+    db.session.commit()
+
+    # Cards
     cards = [
         Card(
             title="Start the project",
             description="Stage 1 - ERD Creation",
             status="Done",
             date_created=date.today(),
+            user_id = users[0].id
         ),
         Card(
             title="ORM Queries",
             description="Stage 2 - Implement CRUD queries",
             status="In Progress",
-            date_created=date.today(), 
+            date_created=date.today(),
+            user_id = users[1].id
         ),
         Card(
             title="Marshmallow",
             description="Stage 3 - Implement JSONify of models",
             status="In Progress",
             date_created=date.today(),
+            user_id = users[0].id
         ),
     ]
 
-    db.session.add_all(users)
     db.session.add_all(cards)
     db.session.commit()
 
