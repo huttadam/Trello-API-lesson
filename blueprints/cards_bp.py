@@ -32,7 +32,7 @@ def one_card(id):
 @cards_bp.route('/', methods=['POST'])
 @jwt_required()
 def create_card():
-    admin_required()
+    # admin_required()
     card_info = CardSchema(exclude=['id', 'date_created']).load(request.json)
     card = Card(
         title = card_info['title'],

@@ -10,6 +10,26 @@ from auth import admin_required
 users_bp = Blueprint('users', __name__, url_prefix='/users')
 
 
+@users_bp.route("/")
+@jwt_required()
+def all_users():
+    admin_required()
+    stmt = db.select(User)
+    users = db.session.scalars(stmt).all()
+    return UserSchema(many=True, exclude=['password','cards']).dump(users)
+
+@users_bp.route('/<int:id>')
+@jwt_required()
+def one_user(id):
+    admin_required()
+    stmt = db.select(User).filter_by(id=id) # .where(Card.id == id)
+    user = db.session.scalar(stmt)
+    if user:
+        return UserSchema(exclude = ['password']).dump(user)
+    else:
+        return {'error': 'Card not found'}, 404
+
+
 @users_bp.route("/register", methods=["POST"])
 def register():
     try:
@@ -29,7 +49,7 @@ def register():
         db.session.commit()
 
         # Return the new user
-        return UserSchema(exclude=["password"]).dump(user), 201
+        return UserSchema(exclude=["password", "cards"]).dump(user), 201
     except IntegrityError:
         return {"error": "Email address already in use"}, 409
 
@@ -46,16 +66,8 @@ def login():
         # 4. Create a JWT token
         token = create_access_token(identity=user.id, expires_delta=timedelta(hours=2))
         # 5. Return the token
-        return {'token': token, 'user': UserSchema(exclude=["password", 'cards']).dump(user)}
+        return {'token': token, 'user': UserSchema(exclude=["password",'cards']).dump(user)}
     else:
         return {"error": "Invalid email or password"}, 401
 
 
-@users_bp.route("/")
-@jwt_required()
-def all_users():
-    admin_required()
-    stmt = db.select(User)
-    users = db.session.scalars(stmt).all()
-    print(users[0].cards)
-    return UserSchema(many=True, exclude=['password']).dump(users)
